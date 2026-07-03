@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🔍 Scavenger Hunt PWA
 
-## Getting Started
+A kid-friendly, installable photo scavenger hunt built with **Next.js (App Router)**, **Tailwind CSS**, and the **Google Gemini API**. Players hunt for ~49 real-world items around the house and yard, snap a photo of each, and an AI checks the find and scores it.
 
-First, run the development server:
+## Features
+
+- **Randomized hunt** of all items across four zones: Nature, Around the House, Windows & Porch, and Inside.
+- **Camera scanning** via a hidden `<input type="file" capture="environment">` triggered by a custom "Scan Item" button (opens the rear camera on phones).
+- **AI verification** through a server route (`app/api/check/route.ts`) using Gemini. It returns `{ match, score, tier, reason }`.
+- **Traffic-light scoring:**
+  - 🔴 **Red** - not the item, does not count, try again.
+  - 🟡 **Yellow** - a match scoring 1-7, counts as a find.
+  - 🟢 **Green** - a match scoring 8-10, counts as a find.
+- **Progress bar** and a **count-up timer** that starts on "Start the Hunt".
+- **Skip and come back** to any item; **finish any time** (you can't go back once you finish).
+- **Final recap:** total score, time, items found / total, and a photo gallery of your finds.
+- **Bonus items** (⭐) worth extra points, **confetti** on finds, friendly AI feedback, photo thumbnails, and tier-colored badges.
+- **Progress is saved** to `localStorage`, so a refresh resumes the hunt.
+- **Installable PWA** (`app/manifest.ts`, `standalone` display) - "Add to Home Screen" behaves like a native app on iPhone.
+
+## Getting started
+
+### 1. Set your Gemini API key
+
+Create a `.env.local` file in the project root (copy from `.env.example`):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+GEMINI_API_KEY=your_key_here
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey). `.env.local` is gitignored.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2. Install and run
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+## Testing on a real iPhone
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The camera capture and PWA install both require **HTTPS** (except on `localhost`). To try it on a phone:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Deploy to Vercel** (easiest): push the repo, import it in Vercel, and add `GEMINI_API_KEY` in the project's Environment Variables. Open the deployment URL on your phone and use Share -> "Add to Home Screen".
+- **Or run local HTTPS:** `npx next dev --experimental-https` and open the LAN URL on a device on the same network.
 
-## Deploy on Vercel
+## Environment variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Variable         | Required | Description                                            |
+| ---------------- | -------- | ------------------------------------------------------ |
+| `GEMINI_API_KEY` | Yes      | Your Google Gemini API key (used only on the server).  |
+| `GEMINI_MODEL`   | No       | Overrides the model. Defaults to `gemini-1.5-flash`.   |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+> **Note:** If `gemini-1.5-flash` is ever retired, set `GEMINI_MODEL` to a current flash model (e.g. `gemini-2.0-flash`). The model name is read only in `app/api/check/route.ts`.
+
+## Project structure
+
+```
+app/
+  api/check/route.ts   # Gemini image verification endpoint
+  layout.tsx           # Metadata + viewport (iOS standalone)
+  manifest.ts          # PWA manifest (standalone)
+  page.tsx             # Game state machine (start / playing / finished)
+  icon.png             # Browser + PWA icon
+  apple-icon.png       # iOS home screen icon
+  globals.css          # Kids theme + animations
+components/             # UI: StartScreen, ItemCard, ScanButton, HuntBoard, ResultToast, Timer, ProgressBar, FinishScreen
+lib/
+  items.ts             # The item list + categories
+  game.ts              # Scoring, tiers, hunt state helpers
+  storage.ts           # localStorage persistence
+  image.ts             # Camera image -> data URL + downscaling
+  confetti.ts          # Celebration effect
+public/                # Manifest icons (192 / 512)
+```
+
+## How scoring works
+
+- The AI returns whether the photo matches the target item and a 0-10 quality score.
+- Non-matches are **red** (retry). Matches are **yellow** (1-7) or **green** (8-10) and count as found.
+- Your final score is the sum of your best score per found item, plus **+5** for each bonus item found.
