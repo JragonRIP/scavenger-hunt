@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 // Kept in one place so it's a one-line swap if this model is ever retired.
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
+// Override with GEMINI_MODEL in .env.local (e.g. gemini-2.0-flash, gemini-flash-latest).
+const GEMINI_MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 
 interface CheckRequestBody {
   /** Data URL ("data:image/jpeg;base64,....") or raw base64 string. */
@@ -123,9 +124,10 @@ export async function POST(request: Request): Promise<Response> {
     };
     return Response.json(payload);
   } catch (err) {
-    console.error("Gemini check failed:", err);
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("Gemini check failed:", detail);
     return Response.json(
-      { error: "The photo checker had a hiccup. Please try again." },
+      { error: "The photo checker had a hiccup. Please try again.", detail },
       { status: 502 },
     );
   }

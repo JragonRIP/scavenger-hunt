@@ -51,9 +51,9 @@ The camera capture and PWA install both require **HTTPS** (except on `localhost`
 | Variable         | Required | Description                                            |
 | ---------------- | -------- | ------------------------------------------------------ |
 | `GEMINI_API_KEY` | Yes      | Your Google Gemini API key (used only on the server).  |
-| `GEMINI_MODEL`   | No       | Overrides the model. Defaults to `gemini-1.5-flash`.   |
+| `GEMINI_MODEL`   | No       | Overrides the model. Defaults to `gemini-2.5-flash`.   |
 
-> **Note:** If `gemini-1.5-flash` is ever retired, set `GEMINI_MODEL` to a current flash model (e.g. `gemini-2.0-flash`). The model name is read only in `app/api/check/route.ts`.
+> **Note:** If this model is ever retired, set `GEMINI_MODEL` to a current flash model (e.g. `gemini-2.0-flash` or `gemini-flash-latest`). The model name is read only in `app/api/check/route.ts`.
 
 ## Project structure
 
