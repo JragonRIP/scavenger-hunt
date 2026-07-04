@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CheckResponse } from "@/lib/types";
 import { ITEMS_BY_ID } from "@/lib/items";
 import {
@@ -30,6 +30,7 @@ import FinishScreen from "@/components/FinishScreen";
 import ItemCard from "@/components/ItemCard";
 import FlashFindCard from "@/components/FlashFindCard";
 import FlashFindModal from "@/components/FlashFindModal";
+import FlashLightningEntrance from "@/components/FlashLightningEntrance";
 import FlashFindToast from "@/components/FlashFindToast";
 import FlashTimeUpModal from "@/components/FlashTimeUpModal";
 import HuntBoard from "@/components/HuntBoard";
@@ -50,11 +51,23 @@ export default function Home() {
   const [confirm, setConfirm] = useState<null | "finish" | "new">(null);
   const [showFlashIntro, setShowFlashIntro] = useState(false);
   const [showTimeUp, setShowTimeUp] = useState(false);
+  const [animatedOfferToken, setAnimatedOfferToken] = useState<number | null>(null);
+  const flashLightningRef = useRef<HTMLButtonElement>(null);
 
   const flashActive = state ? isFlashFindActive(state, now) : false;
   const flashRemaining = state ? flashFindRemainingMs(state, now) : 0;
   const flashExpiresAt = state?.flashFind?.expiresAt ?? null;
   const flashItem = state ? currentFlashItem(state) : null;
+  const flashAvailable = state ? showFlashLightning(state) : false;
+  const flashOfferToken = flashAvailable ? (state?.flashFind?.nextOfferAt ?? 0) : null;
+  const playFlashEntrance =
+    flashOfferToken !== null && animatedOfferToken !== flashOfferToken;
+  const showHeaderLightning =
+    flashOfferToken !== null && animatedOfferToken === flashOfferToken;
+
+  const handleFlashEntranceComplete = useCallback(() => {
+    if (flashOfferToken !== null) setAnimatedOfferToken(flashOfferToken);
+  }, [flashOfferToken]);
 
   // Offer a new flash find every 2.5 minutes (re-check each second via `now`).
   useEffect(() => {
@@ -370,12 +383,16 @@ export default function Home() {
               className="rounded-full bg-white/25 px-3 py-1 text-sm font-extrabold text-white"
             />
             <div className="flex gap-2">
-              {showFlashLightning(state) && (
+              {flashAvailable && (
                 <button
+                  ref={flashLightningRef}
                   type="button"
                   onClick={() => setShowFlashIntro(true)}
-                  className="rounded-full bg-amber-400 px-3 py-1 text-sm font-extrabold text-amber-950 shadow ring-2 ring-white/50 transition active:scale-95"
+                  className={`rounded-full bg-amber-400 px-3 py-1 text-sm font-extrabold text-amber-950 shadow ring-2 ring-white/50 transition active:scale-95 ${
+                    showHeaderLightning ? "" : "pointer-events-none opacity-0"
+                  }`}
                   aria-label="Flash find"
+                  tabIndex={showHeaderLightning ? 0 : -1}
                 >
                   ⚡
                 </button>
@@ -398,6 +415,14 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {playFlashEntrance && flashOfferToken !== null && (
+        <FlashLightningEntrance
+          key={flashOfferToken}
+          targetRef={flashLightningRef}
+          onComplete={handleFlashEntranceComplete}
+        />
+      )}
 
       <div className="mx-auto max-w-lg space-y-6 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         {flashActive && flashItem ? (
@@ -436,7 +461,7 @@ export default function Home() {
         />
       </div>
 
-      {showFlashIntro && showFlashLightning(state) && (
+      {showFlashIntro && flashAvailable && showHeaderLightning && (
         <FlashFindModal onAccept={startFlashFind} onCancel={declineFlashFind} />
       )}
 
