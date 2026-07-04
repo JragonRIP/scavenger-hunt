@@ -18,8 +18,29 @@ export function isOverridePassword(input: string): boolean {
   return input.trim().toUpperCase() === OVERRIDE_PASSWORD;
 }
 
-/** Label sent to Gemini for the lightning flash find. */
-export const FLASH_FIND_LABEL = "A butterfly";
+/** Random items for recurring lightning flash finds. */
+export const FLASH_FIND_POOL = [
+  "A single sock",
+  "A spoon",
+  "A piece of fruit",
+  "Something soft",
+  "A pen",
+  "Something round",
+  "A toothbrush",
+  "Something shiny",
+  "A box of cereal",
+  "A pillow",
+  "Something blue",
+  "A toy with wheels",
+  "A book with a red cover",
+  "A shoe with laces",
+  "A coin",
+  "A remote control",
+  "A piece of paper",
+  "A stuffed animal",
+  "A hairbrush or comb",
+  "Something that makes noise",
+] as const;
 
 /** Points awarded for a successful flash find. */
 export const FLASH_FIND_POINTS = 20;
@@ -27,15 +48,64 @@ export const FLASH_FIND_POINTS = 20;
 /** How long players have to complete a flash find. */
 export const FLASH_FIND_DURATION_MS = 60_000;
 
-export function defaultFlashFind(): FlashFindState {
-  return { status: "available", expiresAt: null, photo: null };
+/** How often a new flash find is offered during a hunt. */
+export const FLASH_ROUND_INTERVAL_MS = 150_000; // 2.5 minutes
+
+export function pickRandomFlashItem(): string {
+  const idx = Math.floor(Math.random() * FLASH_FIND_POOL.length);
+  return FLASH_FIND_POOL[idx];
+}
+
+export function scheduleNextFlash(now = Date.now()): number {
+  return now + FLASH_ROUND_INTERVAL_MS;
+}
+
+export function defaultFlashFind(now = Date.now()): FlashFindState {
+  return {
+    status: "idle",
+    item: null,
+    expiresAt: null,
+    nextOfferAt: now + FLASH_ROUND_INTERVAL_MS,
+    wins: [],
+  };
+}
+
+/** Migrates older saved flash-find shapes into the current format. */
+function migrateFlashFind(ff: Partial<FlashFindState> & { photo?: string | null }): FlashFindState {
+  const now = Date.now();
+  const wins = ff.wins ?? [];
+  // Legacy single butterfly win stored as status "won" + photo.
+  if ((ff as { status?: string }).status === "won" && ff.photo && wins.length === 0) {
+    wins.push({
+      item: "A butterfly",
+      photo: ff.photo,
+      points: FLASH_FIND_POINTS,
+    });
+  }
+  const status =
+    ff.status === "available" || ff.status === "active" || ff.status === "idle"
+      ? ff.status
+      : "idle";
+  return {
+    status,
+    item: ff.item ?? null,
+    expiresAt: ff.expiresAt ?? null,
+    nextOfferAt: ff.nextOfferAt ?? scheduleNextFlash(now),
+    wins,
+  };
 }
 
 /** Ensures flash-find state exists and expires stale active challenges. */
 export function normalizeFlashFind(ff?: FlashFindState): FlashFindState {
-  const base = ff ?? defaultFlashFind();
+  const base = migrateFlashFind(ff ?? defaultFlashFind());
   if (base.status === "active" && base.expiresAt !== null && base.expiresAt <= Date.now()) {
-    return { ...base, status: "expired", expiresAt: null };
+    return {
+      ...base,
+      status: "idle",
+      item: null,
+      expiresAt: null,
+      nextOfferAt: scheduleNextFlash(),
+    };
   }
   return base;
 }
@@ -49,10 +119,19 @@ export function isFlashFindActive(state: HuntState, now = Date.now()): boolean {
   return ff.status === "active" && ff.expiresAt !== null && ff.expiresAt > now;
 }
 
+export function shouldOfferFlashFind(state: HuntState, now: number): boolean {
+  const ff = normalizeFlashFind(state.flashFind);
+  return ff.status === "idle" && now >= ff.nextOfferAt;
+}
+
 export function flashFindRemainingMs(state: HuntState, now: number): number {
   const ff = normalizeFlashFind(state.flashFind);
   if (ff.status !== "active" || ff.expiresAt === null) return 0;
   return Math.max(0, ff.expiresAt - now);
+}
+
+export function currentFlashItem(state: HuntState): string | null {
+  return normalizeFlashFind(state.flashFind).item;
 }
 
 /**
@@ -128,8 +207,8 @@ export function totalScore(state: HuntState): number {
     total += p.score;
     if (ITEMS_BY_ID[id]?.bonus) total += BONUS_POINTS;
   }
-  if (normalizeFlashFind(state.flashFind).status === "won") {
-    total += FLASH_FIND_POINTS;
+  for (const win of normalizeFlashFind(state.flashFind).wins) {
+    total += win.points;
   }
   return total;
 }

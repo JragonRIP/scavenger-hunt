@@ -3,8 +3,6 @@ import type { HuntState } from "@/lib/types";
 import { ITEMS_BY_ID } from "@/lib/items";
 import {
   BONUS_POINTS,
-  FLASH_FIND_LABEL,
-  FLASH_FIND_POINTS,
   foundCount,
   formatDuration,
   normalizeFlashFind,
@@ -37,8 +35,7 @@ export default function FinishScreen({ state, onNewHunt }: FinishScreenProps) {
     .map((id) => ({ item: ITEMS_BY_ID[id], progress: state.progress[id] }))
     .filter((x) => x.progress?.status === "found");
 
-  const flashWon = normalizeFlashFind(state.flashFind).status === "won";
-  const flashPhoto = state.flashFind?.photo ?? null;
+  const flashWins = normalizeFlashFind(state.flashFind).wins;
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center px-4 py-8">
@@ -52,19 +49,22 @@ export default function FinishScreen({ state, onNewHunt }: FinishScreenProps) {
           <Stat label="Time" value={formatDuration(time)} accent="from-sky-300 to-blue-500" />
         </div>
 
-        {foundItems.length > 0 || flashWon ? (
+        {foundItems.length > 0 || flashWins.length > 0 ? (
           <>
             <h2 className="mt-8 text-left text-lg font-extrabold text-white drop-shadow">
               Your finds 📚
             </h2>
             <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {flashWon && (
-                <div className="overflow-hidden rounded-2xl bg-amber-50 shadow ring-2 ring-amber-300">
+              {flashWins.map((win, i) => (
+                <div
+                  key={`flash-${i}-${win.item}`}
+                  className="overflow-hidden rounded-2xl bg-amber-50 shadow ring-2 ring-amber-300"
+                >
                   <div className="relative aspect-square bg-gray-100">
-                    {flashPhoto ? (
+                    {win.photo ? (
                       <Image
-                        src={flashPhoto}
-                        alt={FLASH_FIND_LABEL}
+                        src={win.photo}
+                        alt={win.item}
                         fill
                         sizes="120px"
                         className="object-cover"
@@ -76,14 +76,14 @@ export default function FinishScreen({ state, onNewHunt }: FinishScreenProps) {
                       </span>
                     )}
                     <span className="absolute right-1 top-1 rounded-full bg-amber-400 px-1.5 text-[10px] font-black text-white">
-                      +{FLASH_FIND_POINTS}
+                      +{win.points}
                     </span>
                   </div>
-                  <p className="px-1.5 py-1 text-center text-[10px] font-bold text-amber-700">
-                    ⚡ Flash find
+                  <p className="truncate px-1.5 py-1 text-center text-[10px] font-bold text-amber-700">
+                    ⚡ {win.item}
                   </p>
                 </div>
-              )}
+              ))}
               {foundItems.map(({ item, progress }) => (
                 <div
                   key={item.id}

@@ -5,19 +5,23 @@ import type { CheckResponse } from "@/lib/types";
 import { ITEMS_BY_ID } from "@/lib/items";
 import {
   createHuntState,
+  currentFlashItem,
   FLASH_FIND_DURATION_MS,
-  FLASH_FIND_LABEL,
+  FLASH_FIND_POINTS,
   foundCount,
   flashFindRemainingMs,
   isFlashFindActive,
   MANUAL_OVERRIDE_SCORE,
   nextUnfoundIndex,
   normalizeFlashFind,
+  pickRandomFlashItem,
+  scheduleNextFlash,
+  shouldOfferFlashFind,
   showFlashLightning,
   toTier,
 } from "@/lib/game";
 import { useNow } from "@/lib/clock";
-import { setHuntState, updateHuntState, useHuntState } from "@/lib/store";
+import { setHuntState, getHuntState, updateHuntState, useHuntState } from "@/lib/store";
 import { downscaleDataUrl } from "@/lib/image";
 import { celebrate } from "@/lib/confetti";
 import StartScreen from "@/components/StartScreen";
@@ -33,7 +37,7 @@ import ResultToast from "@/components/ResultToast";
 import Timer from "@/components/Timer";
 
 type ScanResult = CheckResponse & { itemId: string; photo: string };
-type FlashScanResult = CheckResponse & { photo: string };
+type FlashScanResult = CheckResponse & { photo: string; item: string };
 
 export default function Home() {
   const state = useHuntState();
@@ -49,8 +53,29 @@ export default function Home() {
   const flashActive = state ? isFlashFindActive(state, now) : false;
   const flashRemaining = state ? flashFindRemainingMs(state, now) : 0;
   const flashExpiresAt = state?.flashFind?.expiresAt ?? null;
+  const flashItem = state ? currentFlashItem(state) : null;
+  const flashOfferDue = state ? shouldOfferFlashFind(state, now) : false;
 
-  // Expire the flash find when the countdown hits zero.
+  // Offer a new flash find every 2.5 minutes.
+  useEffect(() => {
+    if (!state || state.phase !== "playing" || !flashOfferDue) return;
+
+    updateHuntState((prev) => {
+      if (!prev) return prev;
+      const ff = normalizeFlashFind(prev.flashFind);
+      if (ff.status !== "idle" || Date.now() < ff.nextOfferAt) return prev;
+      return {
+        ...prev,
+        flashFind: {
+          ...ff,
+          status: "available",
+          item: pickRandomFlashItem(),
+        },
+      };
+    });
+  }, [state, flashOfferDue]);
+
+  // Expire the flash find when the countdown hits zero (no points awarded).
   useEffect(() => {
     if (!flashActive || flashExpiresAt === null) return;
 
@@ -62,7 +87,13 @@ export default function Home() {
         if (ff.status !== "active") return prev;
         return {
           ...prev,
-          flashFind: { ...ff, status: "expired", expiresAt: null },
+          flashFind: {
+            ...ff,
+            status: "idle",
+            item: null,
+            expiresAt: null,
+            nextOfferAt: scheduleNextFlash(),
+          },
         };
       });
       setShowTimeUp(true);
@@ -115,19 +146,39 @@ export default function Home() {
     setShowFlashIntro(false);
     updateHuntState((prev) => {
       if (!prev) return prev;
+      const ff = normalizeFlashFind(prev.flashFind);
+      if (!ff.item) return prev;
       return {
         ...prev,
         flashFind: {
+          ...ff,
           status: "active",
           expiresAt: Date.now() + FLASH_FIND_DURATION_MS,
-          photo: null,
+        },
+      };
+    });
+  }
+
+  function declineFlashFind() {
+    setShowFlashIntro(false);
+    updateHuntState((prev) => {
+      if (!prev) return prev;
+      const ff = normalizeFlashFind(prev.flashFind);
+      return {
+        ...prev,
+        flashFind: {
+          ...ff,
+          status: "idle",
+          item: null,
+          expiresAt: null,
+          nextOfferAt: scheduleNextFlash(),
         },
       };
     });
   }
 
   async function handleFlashImage(dataUrl: string) {
-    if (!state || !flashActive) return;
+    if (!state || !flashActive || !flashItem) return;
 
     setScanning(true);
     setBanner(null);
@@ -136,7 +187,7 @@ export default function Home() {
       const res = await fetch("/api/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: sendImage, item: FLASH_FIND_LABEL }),
+        body: JSON.stringify({ image: sendImage, item: flashItem }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -146,22 +197,38 @@ export default function Home() {
       const check = data as CheckResponse;
       const thumb = await downscaleDataUrl(dataUrl, 220, 0.7);
 
+      // Re-check the timer after the API round-trip — no points if time ran out.
+      const latest = getHuntState();
+      if (!latest || !isFlashFindActive(latest, Date.now())) {
+        setBanner("Too slow — time's up! No points for this one.");
+        return;
+      }
+
       if (check.match) {
         updateHuntState((prev) => {
           if (!prev) return prev;
+          const ff = normalizeFlashFind(prev.flashFind);
+          if (!isFlashFindActive(prev, Date.now()) || !ff.item) return prev;
+          const wonItem = ff.item;
           return {
             ...prev,
             flashFind: {
-              status: "won",
+              ...ff,
+              status: "idle",
+              item: null,
               expiresAt: null,
-              photo: thumb,
+              nextOfferAt: scheduleNextFlash(),
+              wins: [
+                ...ff.wins,
+                { item: wonItem, photo: thumb, points: FLASH_FIND_POINTS },
+              ],
             },
           };
         });
         celebrate(true);
-        setFlashResult({ ...check, photo: thumb });
+        setFlashResult({ ...check, photo: thumb, item: flashItem });
       } else {
-        setFlashResult({ ...check, photo: thumb });
+        setFlashResult({ ...check, photo: thumb, item: flashItem });
       }
     } catch {
       setBanner("Could not reach the checker. Check your connection and try again.");
@@ -333,8 +400,9 @@ export default function Home() {
       </header>
 
       <div className="mx-auto max-w-lg space-y-6 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        {flashActive ? (
+        {flashActive && flashItem ? (
           <FlashFindCard
+            item={flashItem}
             remainingMs={flashRemaining}
             scanning={scanning}
             onImage={handleFlashImage}
@@ -368,16 +436,18 @@ export default function Home() {
         />
       </div>
 
-      {showFlashIntro && (
+      {showFlashIntro && flashItem && (
         <FlashFindModal
+          item={flashItem}
           onAccept={startFlashFind}
-          onCancel={() => setShowFlashIntro(false)}
+          onCancel={declineFlashFind}
         />
       )}
 
       {flashResult && (
         <FlashFindToast
           kind={flashResult.match ? "win" : "miss"}
+          itemLabel={flashResult.item}
           photo={flashResult.photo}
           reason={flashResult.reason}
           onDismiss={() => setFlashResult(null)}

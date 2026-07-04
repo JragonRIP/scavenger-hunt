@@ -51,6 +51,11 @@ export function updateHuntState(
   setHuntState(updater(current));
 }
 
+export function getHuntState(): HuntState | null {
+  ensureLoaded();
+  return current;
+}
+
 export function useHuntState(): HuntState | null {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

@@ -1,13 +1,19 @@
-import { FLASH_FIND_LABEL, FLASH_FIND_POINTS, formatDuration } from "@/lib/game";
+import { FLASH_FIND_POINTS, formatDuration } from "@/lib/game";
 import ScanButton from "./ScanButton";
 
 interface FlashFindCardProps {
+  item: string;
   remainingMs: number;
   scanning: boolean;
   onImage: (dataUrl: string) => void;
 }
 
-export default function FlashFindCard({ remainingMs, scanning, onImage }: FlashFindCardProps) {
+export default function FlashFindCard({
+  item,
+  remainingMs,
+  scanning,
+  onImage,
+}: FlashFindCardProps) {
   const urgent = remainingMs > 0 && remainingMs <= 10_000;
 
   return (
@@ -38,9 +44,7 @@ export default function FlashFindCard({ remainingMs, scanning, onImage }: FlashF
         <span className="mt-1 shrink-0 rounded-full bg-orange-200 px-2 py-1 text-xs font-extrabold text-orange-800">
           +{FLASH_FIND_POINTS} pts
         </span>
-        <h1 className="text-2xl font-extrabold leading-tight text-gray-800 sm:text-3xl">
-          {FLASH_FIND_LABEL}
-        </h1>
+        <h1 className="text-2xl font-extrabold leading-tight text-gray-800 sm:text-3xl">{item}</h1>
       </div>
 
       <p className="mt-3 text-sm font-semibold text-amber-800">
@@ -48,7 +52,7 @@ export default function FlashFindCard({ remainingMs, scanning, onImage }: FlashF
       </p>
 
       <div className="mt-6">
-        <ScanButton onImage={onImage} disabled={scanning} label="📸 Scan butterfly" />
+        <ScanButton onImage={onImage} disabled={scanning} label="📸 Scan item" />
       </div>
     </div>
   );

@@ -5,12 +5,19 @@ import { FLASH_FIND_POINTS } from "@/lib/game";
 
 interface FlashFindToastProps {
   kind: "win" | "miss";
+  itemLabel: string;
   photo?: string | null;
   reason?: string;
   onDismiss: () => void;
 }
 
-export default function FlashFindToast({ kind, photo, reason, onDismiss }: FlashFindToastProps) {
+export default function FlashFindToast({
+  kind,
+  itemLabel,
+  photo,
+  reason,
+  onDismiss,
+}: FlashFindToastProps) {
   const win = kind === "win";
 
   return (
@@ -21,7 +28,7 @@ export default function FlashFindToast({ kind, photo, reason, onDismiss }: Flash
         }`}
       >
         <div className="flex flex-col items-center text-center">
-          <div className="text-6xl">{win ? "🦋" : "🔎"}</div>
+          <div className="text-6xl">{win ? "⚡" : "🔎"}</div>
           <h2
             className={`mt-2 text-2xl font-extrabold ${win ? "text-emerald-700" : "text-rose-700"}`}
           >
@@ -32,7 +39,7 @@ export default function FlashFindToast({ kind, photo, reason, onDismiss }: Flash
           )}
           {photo && win && (
             <div className="relative mt-4 h-28 w-28 overflow-hidden rounded-2xl ring-4 ring-white shadow">
-              <Image src={photo} alt="Butterfly" fill sizes="112px" className="object-cover" unoptimized />
+              <Image src={photo} alt={itemLabel} fill sizes="112px" className="object-cover" unoptimized />
             </div>
           )}
           <p className="mt-4 text-base font-medium text-gray-700">
