@@ -11,6 +11,7 @@ interface HuntBoardProps {
   state: HuntState;
   currentIndex: number;
   onSelect: (index: number) => void;
+  disabled?: boolean;
 }
 
 const TIER_STAR: Record<string, string> = {
@@ -18,7 +19,7 @@ const TIER_STAR: Record<string, string> = {
   yellow: "text-amber-500",
 };
 
-export default function HuntBoard({ state, currentIndex, onSelect }: HuntBoardProps) {
+export default function HuntBoard({ state, currentIndex, onSelect, disabled }: HuntBoardProps) {
   const indexById = new Map(state.order.map((id, i) => [id, i]));
   const currentId = state.order[currentIndex];
 
@@ -53,9 +54,10 @@ export default function HuntBoard({ state, currentIndex, onSelect }: HuntBoardPr
                     key={it.id}
                     type="button"
                     onClick={() => onSelect(index)}
+                    disabled={disabled}
                     className={`relative flex items-center gap-2 rounded-2xl p-2 text-left shadow transition active:scale-95 ${
                       found ? "bg-emerald-50 ring-2 ring-emerald-300" : "bg-white/90"
-                    } ${isCurrent ? "ring-4 ring-sky-400" : ""}`}
+                    } ${isCurrent ? "ring-4 ring-sky-400" : ""} ${disabled ? "pointer-events-none opacity-50" : ""}`}
                   >
                     <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gray-100 ring-1 ring-black/5">
                       {found && p?.photo ? (

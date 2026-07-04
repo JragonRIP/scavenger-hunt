@@ -1,34 +1,78 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CheckResponse } from "@/lib/types";
 import { ITEMS_BY_ID } from "@/lib/items";
 import {
   createHuntState,
+  FLASH_FIND_DURATION_MS,
+  FLASH_FIND_LABEL,
   foundCount,
+  flashFindRemainingMs,
+  isFlashFindActive,
   MANUAL_OVERRIDE_SCORE,
   nextUnfoundIndex,
+  normalizeFlashFind,
+  showFlashLightning,
   toTier,
 } from "@/lib/game";
+import { useNow } from "@/lib/clock";
 import { setHuntState, updateHuntState, useHuntState } from "@/lib/store";
 import { downscaleDataUrl } from "@/lib/image";
 import { celebrate } from "@/lib/confetti";
 import StartScreen from "@/components/StartScreen";
 import FinishScreen from "@/components/FinishScreen";
 import ItemCard from "@/components/ItemCard";
+import FlashFindCard from "@/components/FlashFindCard";
+import FlashFindModal from "@/components/FlashFindModal";
+import FlashFindToast from "@/components/FlashFindToast";
+import FlashTimeUpModal from "@/components/FlashTimeUpModal";
 import HuntBoard from "@/components/HuntBoard";
 import ProgressBar from "@/components/ProgressBar";
 import ResultToast from "@/components/ResultToast";
 import Timer from "@/components/Timer";
 
 type ScanResult = CheckResponse & { itemId: string; photo: string };
+type FlashScanResult = CheckResponse & { photo: string };
 
 export default function Home() {
   const state = useHuntState();
+  const now = useNow();
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [flashResult, setFlashResult] = useState<FlashScanResult | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<null | "finish" | "new">(null);
+  const [showFlashIntro, setShowFlashIntro] = useState(false);
+  const [showTimeUp, setShowTimeUp] = useState(false);
+
+  const flashActive = state ? isFlashFindActive(state, now) : false;
+  const flashRemaining = state ? flashFindRemainingMs(state, now) : 0;
+  const flashExpiresAt = state?.flashFind?.expiresAt ?? null;
+
+  // Expire the flash find when the countdown hits zero.
+  useEffect(() => {
+    if (!flashActive || flashExpiresAt === null) return;
+
+    const expire = () => {
+      if (Date.now() < flashExpiresAt) return;
+      updateHuntState((prev) => {
+        if (!prev) return prev;
+        const ff = normalizeFlashFind(prev.flashFind);
+        if (ff.status !== "active") return prev;
+        return {
+          ...prev,
+          flashFind: { ...ff, status: "expired", expiresAt: null },
+        };
+      });
+      setShowTimeUp(true);
+      setFlashResult(null);
+    };
+
+    expire();
+    const id = setInterval(expire, 500);
+    return () => clearInterval(id);
+  }, [flashActive, flashExpiresAt]);
 
   function startHunt() {
     setHuntState(createHuntState());
@@ -37,15 +81,20 @@ export default function Home() {
   function newHunt() {
     setHuntState(null);
     setResult(null);
+    setFlashResult(null);
     setBanner(null);
     setConfirm(null);
+    setShowFlashIntro(false);
+    setShowTimeUp(false);
   }
 
   function selectItem(index: number) {
+    if (flashActive) return;
     updateHuntState((prev) => (prev ? { ...prev, currentIndex: index } : prev));
   }
 
   function skipCurrent() {
+    if (flashActive) return;
     updateHuntState((prev) => {
       if (!prev) return prev;
       const id = prev.order[prev.currentIndex];
@@ -62,8 +111,67 @@ export default function Home() {
     });
   }
 
+  function startFlashFind() {
+    setShowFlashIntro(false);
+    updateHuntState((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        flashFind: {
+          status: "active",
+          expiresAt: Date.now() + FLASH_FIND_DURATION_MS,
+          photo: null,
+        },
+      };
+    });
+  }
+
+  async function handleFlashImage(dataUrl: string) {
+    if (!state || !flashActive) return;
+
+    setScanning(true);
+    setBanner(null);
+    try {
+      const sendImage = await downscaleDataUrl(dataUrl, 1024, 0.8);
+      const res = await fetch("/api/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: sendImage, item: FLASH_FIND_LABEL }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setBanner(data?.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+      const check = data as CheckResponse;
+      const thumb = await downscaleDataUrl(dataUrl, 220, 0.7);
+
+      if (check.match) {
+        updateHuntState((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            flashFind: {
+              status: "won",
+              expiresAt: null,
+              photo: thumb,
+            },
+          };
+        });
+        celebrate(true);
+        setFlashResult({ ...check, photo: thumb });
+      } else {
+        setFlashResult({ ...check, photo: thumb });
+      }
+    } catch {
+      setBanner("Could not reach the checker. Check your connection and try again.");
+    } finally {
+      setScanning(false);
+    }
+  }
+
   async function handleImage(dataUrl: string) {
-    if (!state) return;
+    if (!state || flashActive) return;
     const id = state.order[state.currentIndex];
     const item = ITEMS_BY_ID[id];
     if (!item) return;
@@ -195,6 +303,16 @@ export default function Home() {
               className="rounded-full bg-white/25 px-3 py-1 text-sm font-extrabold text-white"
             />
             <div className="flex gap-2">
+              {showFlashLightning(state) && (
+                <button
+                  type="button"
+                  onClick={() => setShowFlashIntro(true)}
+                  className="rounded-full bg-amber-400 px-3 py-1 text-sm font-extrabold text-amber-950 shadow ring-2 ring-white/50 transition active:scale-95"
+                  aria-label="Flash find"
+                >
+                  ⚡
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setConfirm("new")}
@@ -215,16 +333,25 @@ export default function Home() {
       </header>
 
       <div className="mx-auto max-w-lg space-y-6 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        {currentItem && currentProgress && (
-          <ItemCard
-            item={currentItem}
-            index={state.currentIndex}
-            total={state.order.length}
-            progress={currentProgress}
+        {flashActive ? (
+          <FlashFindCard
+            remainingMs={flashRemaining}
             scanning={scanning}
-            onImage={handleImage}
-            onSkip={skipCurrent}
+            onImage={handleFlashImage}
           />
+        ) : (
+          currentItem &&
+          currentProgress && (
+            <ItemCard
+              item={currentItem}
+              index={state.currentIndex}
+              total={state.order.length}
+              progress={currentProgress}
+              scanning={scanning}
+              onImage={handleImage}
+              onSkip={skipCurrent}
+            />
+          )
         )}
 
         {banner && (
@@ -233,10 +360,33 @@ export default function Home() {
           </div>
         )}
 
-        <HuntBoard state={state} currentIndex={state.currentIndex} onSelect={selectItem} />
+        <HuntBoard
+          state={state}
+          currentIndex={state.currentIndex}
+          onSelect={selectItem}
+          disabled={flashActive}
+        />
       </div>
 
-      {result && resultItem && (
+      {showFlashIntro && (
+        <FlashFindModal
+          onAccept={startFlashFind}
+          onCancel={() => setShowFlashIntro(false)}
+        />
+      )}
+
+      {flashResult && (
+        <FlashFindToast
+          kind={flashResult.match ? "win" : "miss"}
+          photo={flashResult.photo}
+          reason={flashResult.reason}
+          onDismiss={() => setFlashResult(null)}
+        />
+      )}
+
+      {showTimeUp && <FlashTimeUpModal onDismiss={() => setShowTimeUp(false)} />}
+
+      {result && resultItem && !flashActive && (
         <ResultToast
           result={result}
           itemLabel={resultItem.item}

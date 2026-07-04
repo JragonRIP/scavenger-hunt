@@ -23,6 +23,16 @@ export interface ItemProgress {
   reason?: string;
 }
 
+export type FlashFindStatus = "available" | "active" | "won" | "expired";
+
+export interface FlashFindState {
+  status: FlashFindStatus;
+  /** Unix ms when the 1-minute window ends (only while status === "active"). */
+  expiresAt: number | null;
+  /** Thumbnail of the winning flash-find photo. */
+  photo: string | null;
+}
+
 export interface HuntState {
   version: number;
   phase: "start" | "playing" | "finished";
@@ -32,6 +42,8 @@ export interface HuntState {
   startedAt: number | null;
   finishedAt: number | null;
   progress: Record<string, ItemProgress>;
+  /** Optional one-time lightning flash find (butterfly). */
+  flashFind?: FlashFindState;
 }
 
 export interface CheckResponse {

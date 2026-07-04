@@ -1,4 +1,4 @@
-import type { HuntState, ItemProgress, Tier } from "./types";
+import type { FlashFindState, HuntState, ItemProgress, Tier } from "./types";
 import { ITEMS, ITEMS_BY_ID, shuffle } from "./items";
 
 /** Score at or above this is a "green" (great) find. */
@@ -16,6 +16,43 @@ export const MANUAL_OVERRIDE_SCORE = GREEN_THRESHOLD;
 /** True if the typed password matches the override secret (case-insensitive, trimmed). */
 export function isOverridePassword(input: string): boolean {
   return input.trim().toUpperCase() === OVERRIDE_PASSWORD;
+}
+
+/** Label sent to Gemini for the lightning flash find. */
+export const FLASH_FIND_LABEL = "A butterfly";
+
+/** Points awarded for a successful flash find. */
+export const FLASH_FIND_POINTS = 20;
+
+/** How long players have to complete a flash find. */
+export const FLASH_FIND_DURATION_MS = 60_000;
+
+export function defaultFlashFind(): FlashFindState {
+  return { status: "available", expiresAt: null, photo: null };
+}
+
+/** Ensures flash-find state exists and expires stale active challenges. */
+export function normalizeFlashFind(ff?: FlashFindState): FlashFindState {
+  const base = ff ?? defaultFlashFind();
+  if (base.status === "active" && base.expiresAt !== null && base.expiresAt <= Date.now()) {
+    return { ...base, status: "expired", expiresAt: null };
+  }
+  return base;
+}
+
+export function showFlashLightning(state: HuntState): boolean {
+  return normalizeFlashFind(state.flashFind).status === "available";
+}
+
+export function isFlashFindActive(state: HuntState, now = Date.now()): boolean {
+  const ff = normalizeFlashFind(state.flashFind);
+  return ff.status === "active" && ff.expiresAt !== null && ff.expiresAt > now;
+}
+
+export function flashFindRemainingMs(state: HuntState, now: number): number {
+  const ff = normalizeFlashFind(state.flashFind);
+  if (ff.status !== "active" || ff.expiresAt === null) return 0;
+  return Math.max(0, ff.expiresAt - now);
 }
 
 /**
@@ -75,6 +112,7 @@ export function createHuntState(): HuntState {
     startedAt: Date.now(),
     finishedAt: null,
     progress,
+    flashFind: defaultFlashFind(),
   };
 }
 
@@ -89,6 +127,9 @@ export function totalScore(state: HuntState): number {
     if (p.status !== "found") continue;
     total += p.score;
     if (ITEMS_BY_ID[id]?.bonus) total += BONUS_POINTS;
+  }
+  if (normalizeFlashFind(state.flashFind).status === "won") {
+    total += FLASH_FIND_POINTS;
   }
   return total;
 }
