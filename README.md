@@ -1,10 +1,10 @@
 # 🔍 Scavenger Hunt PWA
 
-A kid-friendly, installable photo scavenger hunt built with **Next.js (App Router)**, **Tailwind CSS**, and the **Google Gemini API**. Players hunt for ~49 real-world items around the house and yard, snap a photo of each, and an AI checks the find and scores it.
+A kid-friendly, installable photo scavenger hunt built with **Next.js (App Router)**, **Tailwind CSS**, and the **Google Gemini API**. Players hunt for 51 real-world items around the house and yard, snap a photo of each, and an AI checks the find and scores it.
 
 ## Features
 
-- **Randomized hunt** of all items across four zones: Nature, Around the House, Windows & Porch, and Inside.
+- **Randomized hunt** of all items across four zones: Small Details & Nature Finds, Around the Garage/Shed/Yard Gear, Exterior Architecture & Fixtures, and Quick Indoor Bonus Targets.
 - **Camera scanning** via a hidden `<input type="file" capture="environment">` triggered by a custom "Scan Item" button (opens the rear camera on phones).
 - **AI verification** through a server route (`app/api/check/route.ts`) using Gemini. It returns `{ match, score, tier, reason }`.
 - **Traffic-light scoring:**
