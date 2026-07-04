@@ -1,6 +1,6 @@
 # 🔍 Scavenger Hunt PWA
 
-A kid-friendly, installable photo scavenger hunt built with **Next.js (App Router)**, **Tailwind CSS**, and the **Google Gemini API**. Players hunt for 51 real-world items around the house and yard, snap a photo of each, and an AI checks the find and scores it.
+A kid-friendly, installable photo scavenger hunt built with **Next.js (App Router)**, **Tailwind CSS**, and the **Google Gemini API**. Players hunt for 100 real-world items around the house and yard, snap a photo of each, and an AI checks the find and scores it.
 
 ## Features
 

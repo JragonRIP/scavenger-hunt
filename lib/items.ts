@@ -1,6 +1,28 @@
 import type { Category, HuntItem } from "./types";
 
 export const ITEMS: HuntItem[] = [
+  // Nature
+  { id: "heart-leaf", item: "A leaf shaped like a heart", category: "nature", bonus: true },
+  { id: "round-stone", item: "A perfectly round stone", category: "nature" },
+  { id: "letter-twig", item: "A twig that looks like a letter of the alphabet", category: "nature", bonus: true },
+  { id: "clover", item: "A piece of clover (bonus points for 4 leaves!)", category: "nature", bonus: true },
+  { id: "dandelion", item: 'A dandelion (either yellow or a white "puffball")', category: "nature" },
+  { id: "pinecone", item: "A pinecone", category: "nature" },
+  { id: "fallen-bark", item: "A piece of tree bark that has fallen on the ground", category: "nature" },
+  { id: "long-grass", item: "A blade of grass longer than your thumb", category: "nature" },
+  { id: "feather", item: "A feather", category: "nature", bonus: true },
+  { id: "skipping-stone", item: "A smooth skipping stone", category: "nature" },
+  { id: "maple-seed", item: 'A maple tree seed (a "helicopter")', category: "nature", bonus: true },
+  { id: "shell", item: "An empty snail or beetle shell", category: "nature" },
+  { id: "multicolor-rock", item: "A rock with more than one color in it", category: "nature", bonus: true },
+  { id: "moss", item: "A patch of green moss", category: "nature" },
+  { id: "crunchy-leaves", item: "A handful of dry, crunchy leaves", category: "nature" },
+  { id: "big-stick", item: "A stick longer than your arm", category: "nature" },
+  { id: "wildflower", item: "A piece of wild clover or a tiny wildflower", category: "nature" },
+  { id: "animal-rock", item: "A rock that looks like an animal", category: "nature", bonus: true },
+  { id: "seed-pod", item: "A seed pod or acorn cap", category: "nature" },
+  { id: "sand-cup", item: "A small amount of sand or loose dirt in a cup", category: "nature" },
+
   // Small Details & Nature Finds
   { id: "sparkling-rock", item: "A rock that sparkles in the sun", category: "nature" },
   { id: "v-shaped-stick", item: "A V-shaped stick (like a slingshot)", category: "nature" },
@@ -38,6 +60,22 @@ export const ITEMS: HuntItem[] = [
   { id: "sky-puddle", item: "A puddle reflecting the sky", category: "nature" },
   { id: "funny-shadow", item: "A shadow that looks like something funny", category: "nature", bonus: true },
 
+  // Around the outside of the house
+  { id: "garden-hose", item: "A garden hose", category: "outside" },
+  { id: "flowerpot", item: "A flowerpot (with or without a plant)", category: "outside" },
+  { id: "doormat", item: "A doormat", category: "outside" },
+  { id: "patio-chair", item: "A patio chair or lawn chair", category: "outside" },
+  { id: "bike", item: "A bicycle or scooter", category: "outside" },
+  { id: "watering-can", item: "A watering can", category: "outside" },
+  { id: "clothespin", item: "A clothespin", category: "outside" },
+  { id: "porch-light", item: "A porch light", category: "outside" },
+  { id: "brick", item: "A brick", category: "outside" },
+  { id: "outdoor-toy", item: "An outdoor toy (like a sidewalk chalk piece or a ball)", category: "outside" },
+  { id: "puddle", item: "A puddle or a wet spot from the hose", category: "outside" },
+  { id: "spiderweb", item: "A spiderweb (just look, don't touch!)", category: "outside", bonus: true },
+  { id: "mailbox", item: "A mailbox", category: "outside" },
+  { id: "something-wood", item: "Something made of wood (like a fence or deck)", category: "outside" },
+
   // Around the Garage, Shed, & Yard Gear
   { id: "gardening-glove", item: "A gardening glove", category: "outside" },
   { id: "plant-marker", item: "A plastic plant marker or tag", category: "outside" },
@@ -55,6 +93,13 @@ export const ITEMS: HuntItem[] = [
   { id: "scrap-wood", item: "A piece of scrap wood", category: "outside" },
   { id: "tarp", item: "A tarp", category: "outside" },
 
+  // Near the windows & porch
+  { id: "window-screen", item: "A window screen", category: "windows" },
+  { id: "thermometer", item: "A thermometer (indoor or outdoor)", category: "windows" },
+  { id: "keys", item: "A set of keys", category: "windows" },
+  { id: "sunglasses", item: "Sunglasses", category: "windows" },
+  { id: "sun-hat", item: "A sun hat or baseball cap", category: "windows" },
+
   // Exterior Architecture & Fixtures
   { id: "doorbell", item: "A doorbell", category: "windows" },
   { id: "downspout", item: "A downspout or gutter pipe", category: "windows" },
@@ -64,6 +109,18 @@ export const ITEMS: HuntItem[] = [
   { id: "garage-button", item: "A garage door button or sensor", category: "windows" },
   { id: "vent-grate", item: "A ventilation grate", category: "windows" },
   { id: "metal-hinge", item: "A metal hinge", category: "windows" },
+
+  // Inside the house
+  { id: "coin", item: "A coin", category: "inside" },
+  { id: "blue-book", item: "A book with a blue cover", category: "inside" },
+  { id: "colorful-sock", item: "A colorful sock", category: "inside" },
+  { id: "plastic-cup", item: "A plastic cup", category: "inside" },
+  { id: "fridge-magnet", item: "A refrigerator magnet", category: "inside" },
+  { id: "junk-mail", item: "A piece of junk mail", category: "inside" },
+  { id: "toy-wheels", item: "A toy with wheels", category: "inside" },
+  { id: "tv-remote", item: "A television remote", category: "inside" },
+  { id: "tube", item: "A tissue or paper towel roll tube", category: "inside" },
+  { id: "laced-shoe", item: "A shoe with laces", category: "inside" },
 
   // Quick Indoor Bonus Targets
   { id: "text-mug", item: "A coffee mug with text on it", category: "inside", bonus: true },
