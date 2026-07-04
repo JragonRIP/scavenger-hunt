@@ -1,4 +1,5 @@
 import type { HuntState } from "./types";
+import { normalizeFlashFind } from "./game";
 
 const STORAGE_KEY = "scavenger-hunt-v1";
 
@@ -11,6 +12,7 @@ export function loadHuntState(): HuntState | null {
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.order)) {
       return null;
     }
+    parsed.flashFind = normalizeFlashFind(parsed.flashFind);
     return parsed;
   } catch {
     return null;

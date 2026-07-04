@@ -51,11 +51,6 @@ export const FLASH_FIND_DURATION_MS = 60_000;
 /** How often a new flash find is offered during a hunt. */
 export const FLASH_ROUND_INTERVAL_MS = 150_000; // 2.5 minutes
 
-export function pickRandomFlashItem(): string {
-  const idx = Math.floor(Math.random() * FLASH_FIND_POOL.length);
-  return FLASH_FIND_POOL[idx];
-}
-
 export function scheduleNextFlash(now = Date.now()): number {
   return now + FLASH_ROUND_INTERVAL_MS;
 }
@@ -65,32 +60,66 @@ export function defaultFlashFind(now = Date.now()): FlashFindState {
     status: "idle",
     item: null,
     expiresAt: null,
-    nextOfferAt: now + FLASH_ROUND_INTERVAL_MS,
+    nextOfferAt: now,
     wins: [],
   };
 }
 
+export function pickRandomFlashItem(exclude?: string): string {
+  const pool = exclude
+    ? FLASH_FIND_POOL.filter((item) => item !== exclude)
+    : FLASH_FIND_POOL;
+  const choices = pool.length > 0 ? pool : FLASH_FIND_POOL;
+  return choices[Math.floor(Math.random() * choices.length)];
+}
+
+/** Build the next offered flash-find round. */
+export function offerFlashFind(ff: FlashFindState, now = Date.now()): FlashFindState {
+  const lastItem = ff.wins.at(-1)?.item;
+  return {
+    ...ff,
+    status: "available",
+    item: pickRandomFlashItem(lastItem),
+    expiresAt: null,
+    nextOfferAt: now,
+  };
+}
+
 /** Migrates older saved flash-find shapes into the current format. */
-function migrateFlashFind(ff: Partial<FlashFindState> & { photo?: string | null }): FlashFindState {
+function migrateFlashFind(
+  ff: Partial<FlashFindState> & { photo?: string | null; status?: string },
+): FlashFindState {
   const now = Date.now();
-  const wins = ff.wins ?? [];
-  // Legacy single butterfly win stored as status "won" + photo.
-  if ((ff as { status?: string }).status === "won" && ff.photo && wins.length === 0) {
-    wins.push({
-      item: "A butterfly",
-      photo: ff.photo,
-      points: FLASH_FIND_POINTS,
-    });
+  if (!ff || typeof ff !== "object") return defaultFlashFind(now);
+
+  const wins = (ff.wins ?? []).filter((w) => w.item !== "A butterfly");
+  const legacyStatus = ff.status as string | undefined;
+
+  // Old one-time butterfly / won / expired shapes — reset the recurring schedule.
+  if (
+    legacyStatus === "won" ||
+    legacyStatus === "expired" ||
+    (legacyStatus === "available" && !ff.item)
+  ) {
+    return {
+      status: "idle",
+      item: null,
+      expiresAt: null,
+      nextOfferAt: now,
+      wins,
+    };
   }
+
   const status =
-    ff.status === "available" || ff.status === "active" || ff.status === "idle"
-      ? ff.status
+    legacyStatus === "available" || legacyStatus === "active" || legacyStatus === "idle"
+      ? legacyStatus
       : "idle";
+
   return {
     status,
     item: ff.item ?? null,
     expiresAt: ff.expiresAt ?? null,
-    nextOfferAt: ff.nextOfferAt ?? scheduleNextFlash(now),
+    nextOfferAt: typeof ff.nextOfferAt === "number" ? ff.nextOfferAt : now,
     wins,
   };
 }

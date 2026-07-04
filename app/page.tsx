@@ -14,7 +14,7 @@ import {
   MANUAL_OVERRIDE_SCORE,
   nextUnfoundIndex,
   normalizeFlashFind,
-  pickRandomFlashItem,
+  offerFlashFind,
   scheduleNextFlash,
   shouldOfferFlashFind,
   showFlashLightning,
@@ -54,26 +54,22 @@ export default function Home() {
   const flashRemaining = state ? flashFindRemainingMs(state, now) : 0;
   const flashExpiresAt = state?.flashFind?.expiresAt ?? null;
   const flashItem = state ? currentFlashItem(state) : null;
-  const flashOfferDue = state ? shouldOfferFlashFind(state, now) : false;
 
-  // Offer a new flash find every 2.5 minutes.
+  // Offer a new flash find every 2.5 minutes (re-check each second via `now`).
   useEffect(() => {
-    if (!state || state.phase !== "playing" || !flashOfferDue) return;
+    if (!state || state.phase !== "playing") return;
+    if (!shouldOfferFlashFind(state, now)) return;
 
     updateHuntState((prev) => {
       if (!prev) return prev;
       const ff = normalizeFlashFind(prev.flashFind);
-      if (ff.status !== "idle" || Date.now() < ff.nextOfferAt) return prev;
+      if (ff.status !== "idle" || now < ff.nextOfferAt) return prev;
       return {
         ...prev,
-        flashFind: {
-          ...ff,
-          status: "available",
-          item: pickRandomFlashItem(),
-        },
+        flashFind: offerFlashFind(ff, now),
       };
     });
-  }, [state, flashOfferDue]);
+  }, [state, now]);
 
   // Expire the flash find when the countdown hits zero (no points awarded).
   useEffect(() => {
