@@ -14,6 +14,17 @@ export default function FlashLightningEntrance({
   const boltRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<"pop" | "fly">("pop");
   const finishedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  function finish() {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    onCompleteRef.current();
+  }
 
   useEffect(() => {
     const flyTimer = setTimeout(() => setPhase("fly"), 900);
@@ -21,48 +32,58 @@ export default function FlashLightningEntrance({
   }, []);
 
   useEffect(() => {
-    if (phase !== "fly" || !boltRef.current || !targetRef.current || finishedRef.current) {
-      return;
-    }
+    if (phase !== "fly") return;
 
-    const bolt = boltRef.current;
-    const target = targetRef.current;
-    const targetRect = target.getBoundingClientRect();
+    // Safety net: always reveal the header button even if the fly animation fails.
+    const fallbackTimer = setTimeout(finish, 2000);
 
-    const startX = window.innerWidth / 2;
-    const startY = window.innerHeight / 2;
-    const endX = targetRect.left + targetRect.width / 2;
-    const endY = targetRect.top + targetRect.height / 2;
+    const runFly = () => {
+      if (finishedRef.current) return;
+      if (!boltRef.current || !targetRef.current) {
+        requestAnimationFrame(runFly);
+        return;
+      }
 
-    bolt.style.left = `${startX}px`;
-    bolt.style.top = `${startY}px`;
-    bolt.style.transform = "translate(-50%, -50%) scale(1)";
+      const bolt = boltRef.current;
+      const target = targetRef.current;
+      const targetRect = target.getBoundingClientRect();
 
-    const animation = bolt.animate(
-      [
-        {
-          left: `${startX}px`,
-          top: `${startY}px`,
-          transform: "translate(-50%, -50%) scale(1)",
-          opacity: 1,
-        },
-        {
-          left: `${endX}px`,
-          top: `${endY}px`,
-          transform: "translate(-50%, -50%) scale(0.32)",
-          opacity: 1,
-        },
-      ],
-      { duration: 750, easing: "cubic-bezier(0.34, 1.2, 0.64, 1)", fill: "forwards" },
-    );
+      const startX = window.innerWidth / 2;
+      const startY = window.innerHeight / 2;
+      const endX = targetRect.left + targetRect.width / 2;
+      const endY = targetRect.top + targetRect.height / 2;
 
-    animation.onfinish = () => {
-      finishedRef.current = true;
-      onComplete();
+      bolt.style.left = `${startX}px`;
+      bolt.style.top = `${startY}px`;
+      bolt.style.transform = "translate(-50%, -50%) scale(1)";
+
+      const animation = bolt.animate(
+        [
+          {
+            left: `${startX}px`,
+            top: `${startY}px`,
+            transform: "translate(-50%, -50%) scale(1)",
+            opacity: 1,
+          },
+          {
+            left: `${endX}px`,
+            top: `${endY}px`,
+            transform: "translate(-50%, -50%) scale(0.32)",
+            opacity: 1,
+          },
+        ],
+        { duration: 750, easing: "cubic-bezier(0.34, 1.2, 0.64, 1)", fill: "forwards" },
+      );
+
+      animation.onfinish = finish;
     };
 
-    return () => animation.cancel();
-  }, [phase, targetRef, onComplete]);
+    requestAnimationFrame(runFly);
+
+    return () => {
+      clearTimeout(fallbackTimer);
+    };
+  }, [phase, targetRef]);
 
   if (phase === "pop") {
     return (

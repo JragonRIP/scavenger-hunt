@@ -95,11 +95,7 @@ function migrateFlashFind(
   const legacyStatus = ff.status as string | undefined;
 
   // Old one-time butterfly / won / expired shapes — reset the recurring schedule.
-  if (
-    legacyStatus === "won" ||
-    legacyStatus === "expired" ||
-    (legacyStatus === "available" && !ff.item)
-  ) {
+  if (legacyStatus === "won" || legacyStatus === "expired") {
     return {
       status: "idle",
       item: null,
