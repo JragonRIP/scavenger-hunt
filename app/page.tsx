@@ -15,6 +15,7 @@ import {
   nextUnfoundIndex,
   normalizeFlashFind,
   offerFlashFind,
+  pickRandomFlashItem,
   scheduleNextFlash,
   shouldOfferFlashFind,
   showFlashLightning,
@@ -143,13 +144,16 @@ export default function Home() {
     updateHuntState((prev) => {
       if (!prev) return prev;
       const ff = normalizeFlashFind(prev.flashFind);
-      if (!ff.item) return prev;
+      if (ff.status !== "available") return prev;
+      const lastItem = ff.wins.at(-1)?.item;
+      const startedAt = Date.now();
       return {
         ...prev,
         flashFind: {
           ...ff,
           status: "active",
-          expiresAt: Date.now() + FLASH_FIND_DURATION_MS,
+          item: pickRandomFlashItem(lastItem),
+          expiresAt: startedAt + FLASH_FIND_DURATION_MS,
         },
       };
     });
@@ -432,12 +436,8 @@ export default function Home() {
         />
       </div>
 
-      {showFlashIntro && flashItem && (
-        <FlashFindModal
-          item={flashItem}
-          onAccept={startFlashFind}
-          onCancel={declineFlashFind}
-        />
+      {showFlashIntro && showFlashLightning(state) && (
+        <FlashFindModal onAccept={startFlashFind} onCancel={declineFlashFind} />
       )}
 
       {flashResult && (

@@ -73,13 +73,12 @@ export function pickRandomFlashItem(exclude?: string): string {
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
-/** Build the next offered flash-find round. */
+/** Build the next offered flash-find round (item stays secret until the player starts). */
 export function offerFlashFind(ff: FlashFindState, now = Date.now()): FlashFindState {
-  const lastItem = ff.wins.at(-1)?.item;
   return {
     ...ff,
     status: "available",
-    item: pickRandomFlashItem(lastItem),
+    item: null,
     expiresAt: null,
     nextOfferAt: now,
   };
