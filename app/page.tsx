@@ -6,6 +6,7 @@ import { ITEMS_BY_ID } from "@/lib/items";
 import {
   createHuntState,
   foundCount,
+  MANUAL_OVERRIDE_SCORE,
   nextUnfoundIndex,
   toTier,
 } from "@/lib/game";
@@ -20,7 +21,7 @@ import ProgressBar from "@/components/ProgressBar";
 import ResultToast from "@/components/ResultToast";
 import Timer from "@/components/Timer";
 
-type ScanResult = CheckResponse & { itemId: string };
+type ScanResult = CheckResponse & { itemId: string; photo: string };
 
 export default function Home() {
   const state = useHuntState();
@@ -82,9 +83,9 @@ export default function Home() {
         return;
       }
       const check = data as CheckResponse;
+      const thumb = await downscaleDataUrl(dataUrl, 220, 0.7);
 
       if (check.match) {
-        const thumb = await downscaleDataUrl(dataUrl, 220, 0.7);
         updateHuntState((prev) => {
           if (!prev) return prev;
           const prevP = prev.progress[id];
@@ -106,7 +107,7 @@ export default function Home() {
         celebrate(check.tier === "green" || Boolean(item.bonus));
       }
 
-      setResult({ ...check, itemId: id });
+      setResult({ ...check, itemId: id, photo: thumb });
     } catch {
       setBanner("Could not reach the checker. Check your connection and try again.");
     } finally {
@@ -123,6 +124,34 @@ export default function Home() {
       }
       return { ...prev, currentIndex: nextUnfoundIndex(prev, prev.currentIndex) };
     });
+  }
+
+  // Hunt-master override: after the AI rejects a photo, an adult can enter the
+  // secret password, view the photo, and manually count it as a find.
+  function handleOverride() {
+    if (!result) return;
+    const id = result.itemId;
+    const score = MANUAL_OVERRIDE_SCORE;
+    updateHuntState((prev) => {
+      if (!prev) return prev;
+      const prevP = prev.progress[id];
+      const bestScore = Math.max(prevP?.score ?? 0, score);
+      return {
+        ...prev,
+        progress: {
+          ...prev.progress,
+          [id]: {
+            status: "found",
+            score: bestScore,
+            tier: toTier(true, bestScore),
+            photo: result.photo,
+            reason: "Approved by the hunt master! ✅",
+          },
+        },
+      };
+    });
+    celebrate(true);
+    handleNext();
   }
 
   function finishHunt() {
@@ -212,9 +241,10 @@ export default function Home() {
           result={result}
           itemLabel={resultItem.item}
           isBonus={Boolean(resultItem.bonus)}
-          photo={state.progress[result.itemId]?.photo}
+          photo={result.photo}
           onNext={handleNext}
           onRetry={() => setResult(null)}
+          onOverride={handleOverride}
         />
       )}
 

@@ -7,6 +7,17 @@ export const GREEN_THRESHOLD = 8;
 /** Extra points awarded for finding a bonus (special) item. */
 export const BONUS_POINTS = 5;
 
+/** Secret password the hunt master types to manually approve a rejected photo. */
+export const OVERRIDE_PASSWORD = "HUNT";
+
+/** Score given to an item that a human manually approves after the AI rejected it. */
+export const MANUAL_OVERRIDE_SCORE = GREEN_THRESHOLD;
+
+/** True if the typed password matches the override secret (case-insensitive, trimmed). */
+export function isOverridePassword(input: string): boolean {
+  return input.trim().toUpperCase() === OVERRIDE_PASSWORD;
+}
+
 /**
  * Maps the AI's match flag and 0-10 score to a color tier.
  * - red: not the item -> does not count, try again
